@@ -4,7 +4,8 @@ image:
   # Required, e.g. ord.ocir.io/<namespace>/sportsagentic/web
   repository: ""
   pullPolicy: IfNotPresent
-  # Required: the git short SHA built by CI
+  # Required: the git short SHA built by CI. Keep it quoted, and use --set-string
+  # for an all-digit SHA
   tag: ""
 
 imagePullSecrets:

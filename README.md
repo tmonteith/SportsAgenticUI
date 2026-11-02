@@ -50,7 +50,7 @@ Releases are manual, like the other SportsAgentic charts:
 helm upgrade --install sportsagentic-web web/deploy/sportsagentic-web \
   --namespace sportsagentic \
   --set image.repository=ord.ocir.io/<namespace>/sportsagentic/web \
-  --set image.tag=<git-sha>
+  --set-string image.tag=<git-sha>
 ```
 
 The chart deploys the UI and creates the `sportsagentic.dev` ingress. `/api` goes to `sportsagentic-agent` with the prefix stripped and response buffering off, and everything else goes to the UI.
