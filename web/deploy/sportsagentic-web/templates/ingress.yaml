@@ -1,0 +1,57 @@
+{{- if .Values.ingress.enabled -}}
+{{- /* Two objects, because rewrite and buffering annotations apply to a whole Ingress. */ -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "sportsagentic-web.fullname" . }}-api
+  labels:
+    {{- include "sportsagentic-web.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.api.proxyReadTimeoutSeconds | quote }}
+    nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.api.proxyReadTimeoutSeconds | quote }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # ingress-nginx sorts regex paths longest first, so this wins over /.
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .Values.ingress.api.serviceName }}
+                port:
+                  number: {{ .Values.ingress.api.servicePort }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "sportsagentic-web.fullname" . }}
+  labels:
+    {{- include "sportsagentic-web.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "sportsagentic-web.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}
