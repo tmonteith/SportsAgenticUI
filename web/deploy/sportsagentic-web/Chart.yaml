@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sportsagentic-web
+description: Static chat UI for SportsAgentic, plus the sportsagentic.dev ingress routes
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
