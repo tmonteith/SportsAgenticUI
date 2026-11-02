@@ -34,3 +34,19 @@ Selector labels
 app.kubernetes.io/name: {{ include "sportsagentic-web.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Return the image tag as a string. A number from a values file or --reuse-values
+is a float64 here, and toString would turn 8542126 into 8.542126e+06.
+*/}}
+{{- define "sportsagentic-web.imageTag" -}}
+{{- $tag := required "image.tag is required" .Values.image.tag -}}
+{{- if kindIs "float64" $tag -}}
+{{- if ne (floor $tag) $tag -}}
+{{- fail (printf "image.tag %v is not a whole number, so YAML has already changed it. Quote it, or pass --set-string image.tag=<tag>." $tag) -}}
+{{- end -}}
+{{- printf "%.0f" $tag -}}
+{{- else -}}
+{{- $tag -}}
+{{- end -}}
+{{- end }}
