@@ -90,6 +90,22 @@ describe("chat UI", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it("tells the user they've hit the hourly limit", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "Limit reached." }), {
+        status: 429,
+        headers: { "Retry-After": "1200" },
+      }),
+    )
+    const user = renderApp()
+
+    await user.type(screen.getByRole("textbox", { name: /ask about/i }), "Hello{Enter}")
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You've reached your limit for the hour. Please try again in an hour.",
+    )
+  })
+
   it("renders a markdown table as a table", async () => {
     const reply = "| Rank | Team |\n|---|---|\n| 1 | Georgia |\n"
     fetchMock.mockResolvedValue(

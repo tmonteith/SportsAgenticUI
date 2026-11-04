@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { apiFetch, ApiError } from "@/lib/api/client"
+import { apiFetch, ApiError, RATE_LIMIT_MESSAGE } from "@/lib/api/client"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -23,6 +23,20 @@ describe("apiFetch", () => {
     expect(error).toBeInstanceOf(ApiError)
     expect(error).toMatchObject({ status: 503, message: expect.stringContaining("unavailable") })
     expect((error as ApiError).message).not.toContain("stack trace")
+  })
+
+  it("tells the user when they've hit the hourly limit", async () => {
+    const limited = new Response(
+      JSON.stringify({ detail: "Limit of 10 requests per hour reached." }),
+      {
+        status: 429,
+        headers: { "Retry-After": "1200" },
+      },
+    )
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(limited))
+    const error = await apiFetch("/chat/stream").catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 429, message: RATE_LIMIT_MESSAGE })
   })
 
   it("rethrows aborts untouched", async () => {
