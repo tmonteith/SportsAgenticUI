@@ -9,6 +9,7 @@ import {
 } from "@assistant-ui/react"
 import { ArrowDown, ArrowUp, Check, Copy, RefreshCw, Square } from "lucide-react"
 import { Markdown } from "@/components/chat/Markdown"
+import { RateLimitStatus } from "@/components/chat/RateLimitStatus"
 import { ToolActivity } from "@/components/chat/ToolActivity"
 import { Welcome } from "@/components/chat/Welcome"
 import { Button } from "@/components/ui/button"
@@ -49,6 +50,7 @@ export function Thread() {
               </Button>
             </ThreadPrimitive.ScrollToBottom>
             <Composer />
+            <RateLimitStatus />
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>

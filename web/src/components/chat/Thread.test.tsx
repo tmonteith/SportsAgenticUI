@@ -36,9 +36,17 @@ function requestBody(call = 0) {
   }
 }
 
+// The rate limit counter polls on its own; these tests only look at chat requests.
+const rateLimitOff = () =>
+  new Response(JSON.stringify({ enabled: false, limit: null, remaining: null }), { status: 200 })
+
 beforeEach(() => {
   fetchMock.mockReset()
-  vi.stubGlobal("fetch", fetchMock)
+  vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+    String(input).endsWith("/rate-limit")
+      ? Promise.resolve(rateLimitOff())
+      : fetchMock(input, init),
+  )
 })
 
 afterEach(() => {
