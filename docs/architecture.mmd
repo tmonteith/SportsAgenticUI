@@ -1,0 +1,45 @@
+flowchart TD
+    subgraph Browser["User Browser"]
+        Client["Web Client / Browser<br/>https://sportsagentic.dev"]
+    end
+
+    subgraph IngressLayer["Kubernetes Ingress (ingress-nginx)"]
+        IngressSPA["Ingress: sportsagentic-web<br/>Host: sportsagentic.dev<br/>Path: / (Prefix)"]
+        IngressAPI["Ingress: sportsagentic-web-api<br/>Host: sportsagentic.dev<br/>Path: /api/(.*) ➔ Rewrite: /$2<br/>proxy-buffering: off<br/>proxy-read-timeout: 300s"]
+    end
+
+    subgraph WebPod["SportsAgenticUI Pod (sportsagentic-web:80)"]
+        Nginx["Unprivileged Nginx Server (:8080)<br/>• Serves pre-built Vite SPA static assets<br/>• HTML5 pushState fallback (/index.html)<br/>• Gzip compression & /healthz probe"]
+        StaticAssets["Compiled SPA Assets<br/>(dist/index.html, JS, CSS, favicon.svg)"]
+    end
+
+    subgraph FrontendApp["React 18 SPA Architecture (web/src)"]
+        direction TB
+        AppRoot["App Root (src/app/App.tsx)<br/>Header, Logo, 'New chat' button"]
+        ThreadView["Chat Thread (src/components/chat/Thread.tsx)<br/>Message composer, conversation history"]
+        AssistantUI["@assistant-ui/react Runtime<br/>Conversation state & message thread"]
+        StreamAdapter["Custom Stream Adapter (src/lib/stream/adapter.ts)<br/>Converts AUI state to POST /api/chat/stream"]
+        SSEParser["SSE Parser (src/lib/stream/sse.ts)<br/>Parses: tool.start, tool.end, message.delta, done, error"]
+        ToolCard["Tool Call Cards<br/>Visual indicator for get_cfb_scores, etc."]
+    end
+
+    subgraph AgentBackend["Backend Orchestrator (sportsagentic-agent:8000)"]
+        AgentAPI["FastAPI Orchestrator<br/>POST /chat/stream & POST /chat"]
+    end
+
+    Client -->|"HTTPS :443"| IngressSPA
+    Client -->|"HTTPS :443 /api/..."| IngressAPI
+
+    IngressSPA -->|"HTTP :80"| Nginx
+    Nginx --> StaticAssets
+    StaticAssets -.->|"Loaded in Browser"| FrontendApp
+
+    IngressAPI -->|"HTTP :8000 (Rewritten to /chat/stream)"| AgentAPI
+
+    AppRoot --> ThreadView
+    ThreadView --> AssistantUI
+    AssistantUI --> StreamAdapter
+    StreamAdapter -->|"Fetch POST /api/chat/stream"| IngressAPI
+    AgentAPI -->|"SSE stream events"| SSEParser
+    SSEParser -->|"tool.start / tool.end"| ToolCard
+    SSEParser -->|"message.delta"| AssistantUI
