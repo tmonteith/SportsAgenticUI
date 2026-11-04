@@ -1,4 +1,5 @@
 import { config } from "@/lib/config"
+import { formatWait } from "@/lib/format"
 
 export class ApiError extends Error {
   readonly status: number | undefined
@@ -13,8 +14,15 @@ export class ApiError extends Error {
 const NETWORK_ERROR_MESSAGE = "Couldn't reach SportsAgentic. Check your connection and try again."
 const SERVER_ERROR_MESSAGE = "SportsAgentic is unavailable right now. Please try again."
 const REQUEST_ERROR_MESSAGE = "That request couldn't be processed. Please try again."
-export const RATE_LIMIT_MESSAGE =
-  "You've reached your limit for the hour. Please try again in an hour."
+const RATE_LIMIT_FALLBACK_MESSAGE =
+  "You've reached your limit for the hour. Please try again a little later."
+
+/** Says when the next question frees up, from the agent's Retry-After seconds. */
+export function rateLimitMessage(retryAfter: string | null): string {
+  const seconds = Number(retryAfter)
+  if (!retryAfter || !Number.isFinite(seconds) || seconds <= 0) return RATE_LIMIT_FALLBACK_MESSAGE
+  return `You've reached your limit for the hour. You can ask again in ${formatWait(seconds * 1000)}.`
+}
 
 // Bearer tokens get added here when auth arrives.
 export function getAuthHeaders(): Record<string, string> {
@@ -37,7 +45,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (!response.ok) {
     const message =
       response.status === 429
-        ? RATE_LIMIT_MESSAGE
+        ? rateLimitMessage(response.headers.get("Retry-After"))
         : response.status >= 500
           ? SERVER_ERROR_MESSAGE
           : REQUEST_ERROR_MESSAGE

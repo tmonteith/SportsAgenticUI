@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { apiFetch, ApiError, RATE_LIMIT_MESSAGE } from "@/lib/api/client"
+import { apiFetch, ApiError, rateLimitMessage } from "@/lib/api/client"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -36,7 +36,19 @@ describe("apiFetch", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(limited))
     const error = await apiFetch("/chat/stream").catch((caught: unknown) => caught)
     expect(error).toBeInstanceOf(ApiError)
-    expect(error).toMatchObject({ status: 429, message: RATE_LIMIT_MESSAGE })
+    expect(error).toMatchObject({
+      status: 429,
+      message: "You've reached your limit for the hour. You can ask again in 20 min.",
+    })
+  })
+
+  it("falls back to a general wait when Retry-After is missing or not seconds", () => {
+    const fallback = "You've reached your limit for the hour. Please try again a little later."
+    expect(rateLimitMessage(null)).toBe(fallback)
+    expect(rateLimitMessage("Wed, 04 Nov 2026 21:00:00 GMT")).toBe(fallback)
+    expect(rateLimitMessage("45")).toBe(
+      "You've reached your limit for the hour. You can ask again in 45s.",
+    )
   })
 
   it("rethrows aborts untouched", async () => {

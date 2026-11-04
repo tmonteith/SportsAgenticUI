@@ -110,7 +110,7 @@ describe("chat UI", () => {
     await user.type(screen.getByRole("textbox", { name: /ask about/i }), "Hello{Enter}")
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "You've reached your limit for the hour. Please try again in an hour.",
+      "You've reached your limit for the hour. You can ask again in 20 min.",
     )
   })
 

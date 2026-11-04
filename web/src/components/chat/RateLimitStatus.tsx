@@ -1,6 +1,7 @@
 import { useAuiState } from "@assistant-ui/react"
 import { useEffect, useState } from "react"
 import { fetchRateLimit } from "@/lib/api/rateLimit"
+import { formatWait } from "@/lib/format"
 import type { RateLimitStatus as RateLimitStatusResponse } from "@/lib/api/types"
 
 interface Budget {
@@ -10,17 +11,6 @@ interface Budget {
   nextAt: number
   /** When every question is back, in epoch ms; 0 when the budget is full. */
   resetAt: number
-}
-
-/** Renders a wait as "45s", "12 min" or "1 hr". */
-export function formatWait(ms: number): string {
-  const seconds = Math.max(1, Math.ceil(ms / 1000))
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.ceil(seconds / 60)
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const rest = minutes % 60
-  return rest ? `${hours} hr ${rest} min` : `${hours} hr`
 }
 
 function toBudget(status: RateLimitStatusResponse, now: number): Budget | null {

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { App } from "@/app/App"
 import { Providers } from "@/app/providers"
-import { formatWait } from "@/components/chat/RateLimitStatus"
+import { formatWait } from "@/lib/format"
 import type { RateLimitStatus } from "@/lib/api/types"
 
 const encoder = new TextEncoder()
