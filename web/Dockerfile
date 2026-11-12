@@ -9,12 +9,16 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+# Baked into the bundle and sent as X-App-Version; CI passes the image tag, and the app
+# says "dev" without it. Declared after install so a new version keeps the dependency layer.
+ARG VITE_APP_VERSION
 RUN pnpm build
 
 # Runtime Stage
 FROM nginxinc/nginx-unprivileged:1.29-alpine
 
-COPY nginx.conf /etc/nginx/nginx.conf
+# Set the mode here: COPY keeps the local file's, and nginx runs as an unprivileged user
+COPY --chmod=0644 nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 8080

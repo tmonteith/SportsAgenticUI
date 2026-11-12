@@ -95,3 +95,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.IMAGE }}:${{ env.IMAGE_TAG }}
+          build-args: |
+            VITE_APP_VERSION=${{ env.IMAGE_TAG }}

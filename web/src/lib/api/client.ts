@@ -1,3 +1,4 @@
+import { getTelemetryHeaders } from "@/lib/api/telemetry"
 import { config } from "@/lib/config"
 import { formatWait } from "@/lib/format"
 
@@ -32,6 +33,7 @@ export function getAuthHeaders(): Record<string, string> {
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers)
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json")
+  for (const [name, value] of Object.entries(getTelemetryHeaders())) headers.set(name, value)
   for (const [name, value] of Object.entries(getAuthHeaders())) headers.set(name, value)
 
   let response: Response

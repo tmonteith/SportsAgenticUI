@@ -1,6 +1,7 @@
 import type { ChatModelRunOptions, ChatModelRunResult } from "@assistant-ui/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ApiError } from "@/lib/api/client"
+import { getSessionId } from "@/lib/api/telemetry"
 import { chatModelAdapter } from "@/lib/stream/adapter"
 
 const encoder = new TextEncoder()
@@ -64,6 +65,10 @@ describe("chatModelAdapter", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe("/api/chat/stream")
     expect(init.method).toBe("POST")
+    const headers = new Headers(init.headers)
+    expect(headers.get("Accept")).toBe("text/event-stream")
+    expect(headers.get("X-Session-Id")).toBe(getSessionId())
+    expect(headers.get("X-Client")).toBe("web")
     expect(JSON.parse(init.body as string)).toEqual({
       messages: [
         { role: "user", content: "Who is first?" },

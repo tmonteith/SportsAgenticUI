@@ -18,7 +18,8 @@ const TABLE_REPLY = `| Rank | Team | Record |
 
 Check the \`get_cfb_rankings\` tool for more.`
 
-const state = { requests: 0, disconnects: 0, lastMessages: [] }
+const state = { requests: 0, disconnects: 0, lastMessages: [], lastTelemetry: null }
+let failOnceRequests = 0
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function send(res, event, data) {
@@ -83,6 +84,11 @@ const server = createServer(async (req, res) => {
   const { messages } = JSON.parse(body)
   state.requests += 1
   state.lastMessages = messages
+  state.lastTelemetry = {
+    sessionId: req.headers["x-session-id"] ?? null,
+    client: req.headers["x-client"] ?? null,
+    appVersion: req.headers["x-app-version"] ?? null,
+  }
   const prompt = messages.at(-1)?.content ?? ""
 
   if (prompt.includes("fail request")) {
@@ -90,8 +96,10 @@ const server = createServer(async (req, res) => {
     res.end()
     return
   }
-  // Retrying "fail once" succeeds, so Retry can be exercised end to end.
-  const failOnce = prompt.includes("fail once") && state.requests % 2 === 1
+  // Retrying "fail once" succeeds, so Retry can be exercised end to end. Counted on its
+  // own so other tests' request counts don't decide which attempt fails.
+  if (prompt.includes("fail once")) failOnceRequests += 1
+  const failOnce = prompt.includes("fail once") && failOnceRequests % 2 === 1
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
