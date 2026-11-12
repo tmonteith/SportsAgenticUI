@@ -1,12 +1,14 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test"
 
 const MOCK_STATE_URL = "http://localhost:8899/__state"
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 async function mockState(request: APIRequestContext) {
   const response = await request.get(MOCK_STATE_URL)
   return (await response.json()) as {
     disconnects: number
     lastMessages: { role: string; content: string }[]
+    lastTelemetry: { sessionId: string | null; client: string | null; appVersion: string | null }
   }
 }
 
@@ -53,6 +55,33 @@ test("sends the whole conversation back on follow-ups", async ({ page, request }
   expect(lastMessages[0]?.content).toBe("Who is first?")
   expect(lastMessages[1]?.content).toContain("Georgia")
   expect(lastMessages[2]?.content).toBe("And second?")
+})
+
+test("sends telemetry headers through the proxy, with one session per tab", async ({
+  page,
+  request,
+}) => {
+  await ask(page, "Who is first?")
+  await expect(page.getByRole("button", { name: "Regenerate response" })).toBeVisible()
+  const { lastTelemetry: first } = await mockState(request)
+  expect(first.sessionId).toMatch(UUID_V4)
+  expect(first.client).toBe("web")
+  expect(first.appVersion).toBe(process.env.VITE_APP_VERSION || "dev")
+
+  // A reload keeps the tab's session.
+  await page.reload()
+  await ask(page, "Who is second?")
+  await expect(page.getByRole("button", { name: "Regenerate response" })).toBeVisible()
+  expect((await mockState(request)).lastTelemetry.sessionId).toBe(first.sessionId)
+
+  // A new tab starts a new one.
+  const otherTab = await page.context().newPage()
+  await otherTab.goto("/")
+  await ask(otherTab, "Who is third?")
+  await expect(otherTab.getByRole("button", { name: "Regenerate response" })).toBeVisible()
+  const { lastTelemetry: other } = await mockState(request)
+  expect(other.sessionId).toMatch(UUID_V4)
+  expect(other.sessionId).not.toBe(first.sessionId)
 })
 
 test("Stop cancels the request and keeps the partial answer", async ({ page, request }) => {

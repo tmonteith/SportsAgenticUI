@@ -3,6 +3,7 @@ import { apiFetch, ApiError, rateLimitMessage } from "@/lib/api/client"
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
 describe("apiFetch", () => {
@@ -15,6 +16,26 @@ describe("apiFetch", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe("/api/health")
     expect(new Headers(init.headers).get("Content-Type")).toBe("application/json")
+  })
+
+  it("sends the session, client and version headers on every request", async () => {
+    vi.stubEnv("VITE_APP_VERSION", "050a10f")
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response("{}")))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await apiFetch("/rate-limit", { method: "GET" })
+    await apiFetch("/chat/stream", { method: "POST", headers: { Accept: "text/event-stream" } })
+
+    const sent = fetchMock.mock.calls.map(([, init]) => new Headers((init as RequestInit).headers))
+    for (const headers of sent) {
+      expect(headers.get("X-Session-Id")).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      )
+      expect(headers.get("X-Client")).toBe("web")
+      expect(headers.get("X-App-Version")).toBe("050a10f")
+    }
+    expect(sent[1]?.get("X-Session-Id")).toBe(sent[0]?.get("X-Session-Id"))
+    expect(sent[1]?.get("Accept")).toBe("text/event-stream")
   })
 
   it("normalizes HTTP failures without exposing response bodies", async () => {
