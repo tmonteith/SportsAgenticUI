@@ -36,9 +36,17 @@ function requestBody(call = 0) {
   }
 }
 
+// The rate limit counter polls on its own; these tests only look at chat requests.
+const rateLimitOff = () =>
+  new Response(JSON.stringify({ enabled: false, limit: null, remaining: null }), { status: 200 })
+
 beforeEach(() => {
   fetchMock.mockReset()
-  vi.stubGlobal("fetch", fetchMock)
+  vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+    String(input).endsWith("/rate-limit")
+      ? Promise.resolve(rateLimitOff())
+      : fetchMock(input, init),
+  )
 })
 
 afterEach(() => {
@@ -88,6 +96,22 @@ describe("chat UI", () => {
     expect(await screen.findByText("Recovered.")).toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("tells the user they've hit the hourly limit", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "Limit reached." }), {
+        status: 429,
+        headers: { "Retry-After": "1200" },
+      }),
+    )
+    const user = renderApp()
+
+    await user.type(screen.getByRole("textbox", { name: /ask about/i }), "Hello{Enter}")
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You've reached your limit for the hour. You can ask again in 20 min.",
+    )
   })
 
   it("renders a markdown table as a table", async () => {
